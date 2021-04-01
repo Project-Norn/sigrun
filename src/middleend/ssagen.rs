@@ -44,14 +44,24 @@ impl SsaGen {
                     self.trans_stmt(stmt, builder);
                 }
             }
-            ast::StatementKind::Return { value } => match value {
-                None => builder.ret_void(),
-                Some(value) => {
-                    let value = self.trans_expr(*value, builder);
-                    builder.ret(value);
-                }
-            },
+            ast::StatementKind::Return { value } => {
+                self.trans_return_stmt(value.map(|v| *v), builder)
+            }
             x => unimplemented!("{:?}", x),
+        }
+    }
+
+    fn trans_return_stmt(
+        &mut self,
+        value: Option<ast::Expression>,
+        builder: &mut ssa::FunctionBuilder,
+    ) {
+        match value {
+            None => builder.ret_void(),
+            Some(value) => {
+                let value = self.trans_expr(value, builder);
+                builder.ret(value);
+            }
         }
     }
 
