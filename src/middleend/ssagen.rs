@@ -27,7 +27,7 @@ impl SsaGen {
     fn trans_function(&mut self, func: ast::Function) -> ssa::Function {
         let mut function = ssa::Function::new(&func.name, ssa::Type::I32, vec![]);
         let mut builder = ssa::FunctionBuilder::new(&mut function);
-        let entry_block = builder.add_block();
+        let entry_block = builder.new_block();
         builder.set_block(entry_block);
 
         if let Some(body) = func.body {
