@@ -1,5 +1,6 @@
 use siderow::ssa;
 
+use crate::common::operator::BinaryOperator;
 use crate::frontend::ast;
 
 pub fn translate(module: ast::Module) -> ssa::Module {
@@ -72,6 +73,36 @@ impl SsaGen {
     ) -> ssa::Value {
         match expr.kind {
             ast::ExpressionKind::Integer { value } => ssa::Value::new_i32(value),
+
+            ast::ExpressionKind::BinaryOp { op, lhs, rhs } => {
+                self.trans_binop(op, *lhs, *rhs, builder)
+            }
+            x => unimplemented!("{:?}", x),
+        }
+    }
+
+    fn trans_binop(
+        &mut self,
+        op: BinaryOperator,
+        lhs: ast::Expression,
+        rhs: ast::Expression,
+        builder: &mut ssa::FunctionBuilder,
+    ) -> ssa::Value {
+        use BinaryOperator::*;
+
+        let lhs = self.trans_expr(lhs, builder);
+        let rhs = self.trans_expr(rhs, builder);
+
+        match op {
+            Add => builder.add(lhs, rhs),
+            Sub => builder.sub(lhs, rhs),
+            Mul => builder.mul(lhs, rhs),
+            Div => builder.div(lhs, rhs),
+            Mod => builder.rem(lhs, rhs),
+            And => builder.and(lhs, rhs),
+            Or => builder.or(lhs, rhs),
+            Xor => builder.xor(lhs, rhs),
+
             x => unimplemented!("{:?}", x),
         }
     }
