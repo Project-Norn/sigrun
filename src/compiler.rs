@@ -1,11 +1,11 @@
 use anyhow::Result;
+use siderow::arch::x86;
 use std::fs;
 
 use crate::{
-    backend::{gen_x86, regalloc},
     common::cli::CompilerConfig,
     frontend::{self, lexer::SourceFile},
-    middleend::irgen,
+    middleend,
 };
 
 pub fn compile_to_file(config: CompilerConfig) -> Result<()> {
@@ -21,13 +21,13 @@ pub fn compile_to_file(config: CompilerConfig) -> Result<()> {
 pub fn compile(source: SourceFile, _config: &CompilerConfig) -> Result<String> {
     let tokens = frontend::lexer::tokenize(source)?;
     let module = frontend::parser::parse(tokens)?;
-    let mut symtab = frontend::type_check::apply(&module)?;
+    let mut _symtab = frontend::type_check::apply(&module)?;
     frontend::sema_check::apply(&module)?;
 
-    let module = irgen::generate(module, &mut symtab)?;
-    let module = regalloc::alloc_register(module)?;
-    let output = gen_x86::generate(module, false)?;
-    Ok(output)
+    let module = middleend::ssagen::translate(module);
+    let mut asm = x86::instsel::translate(module);
+    x86::regalloc::allocate(&mut asm);
+    Ok(asm.stringify())
 
     // let program = middleend::ssa::translate(&program)?;
     // middleend::optimize::apply(&mut program)?;
