@@ -121,3 +121,16 @@ try 15 "func main(): int {
   var b: int = 5
   return a + b
 }"
+
+try 0 "func main(): int {
+  var a: int = 10
+  var b: int = a
+  a = -10
+  return a + b
+}"
+
+try 20 "func main(): int {
+  val a: int = 10
+  val b: int = a
+  return a + b
+}"

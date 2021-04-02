@@ -66,6 +66,7 @@ impl<'a> SsaGen<'a> {
             | ast::StatementKind::Val { name, typ, value } => {
                 self.trans_var(name, typ, value.map(|v| *v), builder)
             }
+            ast::StatementKind::Assign { dst, value } => self.trans_assign(*dst, *value, builder),
             ast::StatementKind::Return { value } => {
                 self.trans_return_stmt(value.map(|v| *v), builder)
             }
@@ -92,6 +93,17 @@ impl<'a> SsaGen<'a> {
         }
 
         self.symtab.set_local(self.cur_scope(), name, dst);
+    }
+
+    fn trans_assign(
+        &mut self,
+        dst: ast::Expression,
+        value: ast::Expression,
+        builder: &mut ssa::FunctionBuilder,
+    ) {
+        let dst = self.trans_lvalue(dst);
+        let src = self.trans_expr(value, builder);
+        builder.store(dst, src);
     }
 
     fn trans_return_stmt(
@@ -193,6 +205,16 @@ impl<'a> SsaGen<'a> {
             Lte => builder.lte(lhs, rhs),
             Gt => builder.gt(lhs, rhs),
             Gte => builder.gte(lhs, rhs),
+        }
+    }
+
+    fn trans_lvalue(&mut self, expr: ast::Expression) -> ssa::Value {
+        match expr.kind {
+            ast::ExpressionKind::Ident { name } => {
+                let sig = self.symtab.find_variable(self.cur_scope(), &name).unwrap();
+                sig.val.unwrap()
+            }
+            x => unimplemented!("{:?}", x),
         }
     }
 
