@@ -21,10 +21,10 @@ pub fn compile_to_file(config: CompilerConfig) -> Result<()> {
 pub fn compile(source: SourceFile, _config: &CompilerConfig) -> Result<String> {
     let tokens = frontend::lexer::tokenize(source)?;
     let module = frontend::parser::parse(tokens)?;
-    let mut _symtab = frontend::type_check::apply(&module)?;
+    let mut symtab = frontend::type_check::apply(&module)?;
     frontend::sema_check::apply(&module)?;
 
-    let module = middleend::ssagen::translate(module);
+    let module = middleend::ssagen::translate(module, &mut symtab);
     let mut asm = x86::instsel::translate(module);
     x86::regalloc::allocate(&mut asm);
     Ok(asm.stringify())

@@ -110,3 +110,14 @@ try 2 "func main(): int {
     return 2
   }
 }"
+
+try 10 "func main(): int {
+  var a: int = 10
+  return a
+}"
+
+try 15 "func main(): int {
+  var a: int = 10
+  var b: int = 5
+  return a + b
+}"

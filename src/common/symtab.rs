@@ -1,5 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
+use siderow::ssa::Value;
+
 use crate::frontend::ast::Parameter;
 
 use super::types::Type;
@@ -37,7 +39,7 @@ pub struct SigVar {
     pub typ: Type,
     pub is_const: bool,
 
-    pub offset: Option<i32>,
+    pub val: Option<Value>,
 }
 
 impl SigVar {
@@ -46,7 +48,7 @@ impl SigVar {
             typ,
             is_const,
 
-            offset: None,
+            val: None,
         }
     }
 }
@@ -105,9 +107,9 @@ impl SymbolTable {
         None
     }
 
-    pub fn set_local(&mut self, node: NodeId, name: String, offset: i32) {
+    pub fn set_local(&mut self, node: NodeId, name: String, val: Value) {
         let mut var = self.find_variable(node, &name).unwrap();
-        var.offset = Some(offset);
+        var.val = Some(val);
         self.add_variable(node, name, var);
     }
 
