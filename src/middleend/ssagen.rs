@@ -142,7 +142,12 @@ impl SsaGen {
             Or => builder.or(lhs, rhs),
             Xor => builder.xor(lhs, rhs),
 
-            x => unimplemented!("{:?}", x),
+            Equal => builder.eq(lhs, rhs),
+            NotEqual => builder.neq(lhs, rhs),
+            Lt => builder.lt(lhs, rhs),
+            Lte => builder.lte(lhs, rhs),
+            Gt => builder.gt(lhs, rhs),
+            Gte => builder.gte(lhs, rhs),
         }
     }
 }
