@@ -73,6 +73,7 @@ impl SsaGen {
     ) -> ssa::Value {
         match expr.kind {
             ast::ExpressionKind::Integer { value } => ssa::Value::new_i32(value),
+            ast::ExpressionKind::Bool { value } => ssa::Value::new_i1(value),
 
             ast::ExpressionKind::BinaryOp { op, lhs, rhs } => {
                 self.trans_binop(op, *lhs, *rhs, builder)
