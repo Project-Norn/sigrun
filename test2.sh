@@ -48,3 +48,52 @@ try 0 "func main(): int { return 0 | 0 }"
 try 1 "func main(): int { return 1 | 0 }"
 try 0 "func main(): int { return 1 ^ 1 }"
 try 1 "func main(): int { return 1 ^ 0 }"
+
+
+try 1 "func main(): int {
+  if true {
+    return 1
+  } else {
+    return 0
+  }
+}"
+
+try 0 "func main(): int {
+  if false {
+    return 1
+  } else {
+    return 0
+  }
+}"
+
+try 2 "func main(): int {
+  if true {
+    if true {
+      return 2
+    }
+    return 1
+  } else {
+    return 0
+  }
+}"
+
+try 1 "func main(): int {
+  if true {
+    if false {
+      return 2
+    }
+    return 1
+  } else {
+    return 0
+  }
+}"
+
+try 2 "func main(): int {
+  if false {
+    return 0
+  } else if false {
+    return 1
+  } else {
+    return 2
+  }
+}"

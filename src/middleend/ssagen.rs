@@ -48,6 +48,9 @@ impl SsaGen {
             ast::StatementKind::Return { value } => {
                 self.trans_return_stmt(value.map(|v| *v), builder)
             }
+            ast::StatementKind::If { cond, then, els } => {
+                self.trans_if_stmt(*cond, *then, els.map(|v| *v), builder)
+            }
             x => unimplemented!("{:?}", x),
         }
     }
@@ -64,6 +67,41 @@ impl SsaGen {
                 builder.ret(value);
             }
         }
+    }
+
+    fn trans_if_stmt(
+        &mut self,
+        cond: ast::Expression,
+        then: ast::Statement,
+        els: Option<ast::Statement>,
+        builder: &mut ssa::FunctionBuilder,
+    ) {
+        let block_then = builder.new_block();
+        let block_els = builder.new_block();
+        let block_merge = if els.is_some() {
+            builder.new_block()
+        } else {
+            block_els
+        };
+
+        let cond = self.trans_expr(cond, builder);
+        builder.cond_br(cond, block_then, block_els);
+
+        builder.set_block(block_then);
+        self.trans_stmt(then, builder);
+        if !builder.is_terminated() {
+            builder.br(block_merge);
+        }
+
+        builder.set_block(block_els);
+        if let Some(els) = els {
+            self.trans_stmt(els, builder);
+            if !builder.is_terminated() {
+                builder.br(block_merge);
+            }
+        }
+
+        builder.set_block(block_merge);
     }
 
     fn trans_expr(
