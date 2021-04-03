@@ -73,6 +73,9 @@ impl<'a> SsaGen<'a> {
             ast::StatementKind::If { cond, then, els } => {
                 self.trans_if_stmt(*cond, *then, els.map(|v| *v), builder)
             }
+            ast::StatementKind::While { cond, body } => {
+                self.trans_while_stmt(*cond, *body, builder)
+            }
             x => unimplemented!("{:?}", x),
         }
     }
@@ -153,6 +156,28 @@ impl<'a> SsaGen<'a> {
         }
 
         builder.set_block(block_merge);
+    }
+
+    fn trans_while_stmt(
+        &mut self,
+        cond: ast::Expression,
+        body: ast::Statement,
+        builder: &mut ssa::FunctionBuilder,
+    ) {
+        let cond_block = builder.new_block();
+        let body_block = builder.new_block();
+        let exit_block = builder.new_block();
+
+        builder.br(cond_block);
+        builder.set_block(cond_block);
+        let cond = self.trans_expr(cond, builder);
+        builder.cond_br(cond, body_block, exit_block);
+
+        builder.set_block(body_block);
+        self.trans_stmt(body, builder);
+        builder.br(cond_block);
+
+        builder.set_block(exit_block)
     }
 
     fn trans_expr(
