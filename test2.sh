@@ -167,3 +167,49 @@ int {
   /*/
   return 1
 }"
+
+try 2 "func hoge(): int { return 1 }
+func fuga(): int { return hoge() }
+func main(): int { return hoge() + fuga() }"
+
+try 40 "func hoge(): int { return 1 * 2 + 3 * 4 }
+func fuga(): int { return 3 * 4 + 1 * hoge() }
+func main(): int { return hoge() + fuga() }"
+
+try 1 "func hoge() { }
+func main(): int { hoge()hoge()hoge()hoge()hoge() return 1 }"
+
+try 0 "func hoge() {
+  return
+  if false {
+    return
+  }
+}
+
+func main(): int {
+  hoge()
+  return 0
+}"
+
+try 3 "func add(a: int, b: int): int { return a + b }
+func main(): int { return add(1, 2) }"
+
+try 5 "func fib(n: int): int {
+  if n <= 1 {
+    return n
+  } else {
+    return fib(n - 1) + fib(n - 2)
+  }
+}
+func main(): int { return fib(5) }"
+
+try 0 "func main(): int {
+  val a: int
+  return a
+}"
+
+try 10 "func main(): int {
+  val a: int
+  val b: int = a + 10
+  return b
+}"

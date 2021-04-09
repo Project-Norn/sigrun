@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use siderow::ssa::Value;
+use siderow::ssa::{FunctionId, Value};
 
 use crate::frontend::ast::Parameter;
 
@@ -57,11 +57,17 @@ impl SigVar {
 pub struct SigFunc {
     pub params: Vec<Parameter>,
     pub ret_typ: Type,
+
+    pub id: Option<FunctionId>,
 }
 
 impl SigFunc {
     pub fn new(params: Vec<Parameter>, ret_typ: Type) -> Self {
-        Self { params, ret_typ }
+        Self {
+            params,
+            ret_typ,
+            id: None,
+        }
     }
 }
 
@@ -137,5 +143,11 @@ impl SymbolTable {
         }
 
         None
+    }
+
+    pub fn set_id(&mut self, node: NodeId, name: String, id: FunctionId) {
+        let mut func = self.find_function(node, &name).unwrap();
+        func.id = Some(id);
+        self.add_function(node, name, func);
     }
 }

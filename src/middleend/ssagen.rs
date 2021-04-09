@@ -30,27 +30,51 @@ impl<'a> SsaGen<'a> {
     fn translate(mut self, module: ast::Module) -> ssa::Module {
         self.push(module.id);
         for function in module.functions {
-            let ssa_function = self.trans_function(function);
-            self.module.add_function(ssa_function);
+            self.trans_function(function);
         }
         self.pop();
 
         self.module
     }
 
-    fn trans_function(&mut self, func: ast::Function) -> ssa::Function {
-        let mut function = ssa::Function::new(&func.name, ssa::Type::I32, vec![]);
-        let mut builder = ssa::FunctionBuilder::new(&mut function);
+    fn trans_function(&mut self, func: ast::Function) {
+        let ret_typ = self.trans_type(func.ret_typ);
+        let param_typ = func
+            .params
+            .iter()
+            .map(|param| self.trans_type(param.typ.clone()))
+            .collect();
+
+        let function = ssa::Function::new(&func.name, ret_typ, param_typ);
+        let func_name = func.name.clone();
+        let func_id = self.module.add_function(function);
+        self.symtab.set_id(self.cur_scope(), func_name, func_id);
+
+        // TODO
+        let dummy_function = ssa::Function::new("", ssa::Type::Void, vec![]);
+        let mut ssa_function =
+            std::mem::replace(self.module.function_mut(func_id).unwrap(), dummy_function);
+        let mut builder = ssa::FunctionBuilder::new(&mut ssa_function);
         let entry_block = builder.new_block();
         builder.set_block(entry_block);
 
         self.push(func.id);
+
+        for (i, param) in func.params.iter().enumerate() {
+            let name = param.name.clone();
+            let val = ssa::Value::new_param(builder.function(), i);
+            let dst = builder.alloc(val.typ());
+            builder.store(dst, val);
+            self.symtab.set_local(self.cur_scope(), name, dst);
+        }
+
         if let Some(body) = func.body {
             self.trans_stmt(body, &mut builder);
         }
+
         self.pop();
 
-        function
+        let _ = std::mem::replace(self.module.function_mut(func_id).unwrap(), ssa_function);
     }
 
     fn trans_stmt(&mut self, stmt: ast::Statement, builder: &mut ssa::FunctionBuilder) {
@@ -76,7 +100,9 @@ impl<'a> SsaGen<'a> {
             ast::StatementKind::While { cond, body } => {
                 self.trans_while_stmt(*cond, *body, builder)
             }
-            x => unimplemented!("{:?}", x),
+            ast::StatementKind::Call { name, args } => {
+                self.trans_call(name, args, builder);
+            }
         }
     }
 
@@ -193,6 +219,7 @@ impl<'a> SsaGen<'a> {
             ast::ExpressionKind::BinaryOp { op, lhs, rhs } => {
                 self.trans_binop(op, *lhs, *rhs, builder)
             }
+            ast::ExpressionKind::Call { name, args } => self.trans_call(name, args, builder),
             x => unimplemented!("{:?}", x),
         }
     }
@@ -233,6 +260,20 @@ impl<'a> SsaGen<'a> {
         }
     }
 
+    fn trans_call(
+        &mut self,
+        name: String,
+        args: Vec<ast::Expression>,
+        builder: &mut ssa::FunctionBuilder,
+    ) -> ssa::Value {
+        let sig = self.symtab.find_function(self.cur_scope(), &name).unwrap();
+        let args = args
+            .into_iter()
+            .map(|arg| self.trans_expr(arg, builder))
+            .collect();
+        builder.call(&self.module, sig.id.unwrap(), args)
+    }
+
     fn trans_lvalue(&mut self, expr: ast::Expression) -> ssa::Value {
         match expr.kind {
             ast::ExpressionKind::Ident { name } => {
@@ -245,6 +286,7 @@ impl<'a> SsaGen<'a> {
 
     fn trans_type(&self, typ: Type) -> ssa::Type {
         match typ {
+            Type::Void => ssa::Type::Void,
             Type::Int => ssa::Type::I32,
             Type::Bool => ssa::Type::I1,
 
