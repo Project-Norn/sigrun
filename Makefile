@@ -5,6 +5,6 @@ run:
 	cargo run
 
 test:
-	./test2.sh
+	./test.sh
 
 .PHONY: build run test

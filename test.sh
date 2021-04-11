@@ -3,8 +3,8 @@
 try() {
   option=$1
 
-  python3 test_preprocess.py
-  cargo run -- $option tmp.vd tmp.s
+  # python3 test_preprocess.py
+  cargo run -- $option test.vd tmp.s
   if [ "$?" != "0" ]; then
     echo "compiling failed"
     exit 1
@@ -18,4 +18,4 @@ try() {
 }
 
 try ""
-try "--optimize"
+# try "--optimize"
