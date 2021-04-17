@@ -38,11 +38,11 @@ impl<'a> SsaGen<'a> {
     }
 
     fn trans_function(&mut self, func: ast::Function) {
-        let ret_typ = self.trans_type(func.ret_typ);
+        let ret_typ = Self::trans_type(func.ret_typ, &mut self.module.types);
         let param_typ = func
             .params
             .iter()
-            .map(|param| self.trans_type(param.typ.clone()))
+            .map(|param| Self::trans_type(param.typ.clone(), &mut self.module.types))
             .collect();
 
         let function = ssa::Function::new(&func.name, ret_typ, param_typ);
@@ -113,7 +113,7 @@ impl<'a> SsaGen<'a> {
         value: Option<ast::Expression>,
         builder: &mut ssa::FunctionBuilder,
     ) {
-        let typ = self.trans_type(typ);
+        let typ = Self::trans_type(typ, &mut builder.function_mut().types);
         let dst = builder.alloc(typ);
 
         if let Some(value) = value {
@@ -130,7 +130,7 @@ impl<'a> SsaGen<'a> {
         value: ast::Expression,
         builder: &mut ssa::FunctionBuilder,
     ) {
-        let dst = self.trans_lvalue(dst);
+        let dst = self.trans_lvalue(dst, builder);
         let src = self.trans_expr(value, builder);
         builder.store(dst, src);
     }
@@ -220,6 +220,7 @@ impl<'a> SsaGen<'a> {
                 self.trans_binop(op, *lhs, *rhs, builder)
             }
             ast::ExpressionKind::Call { name, args } => self.trans_call(name, args, builder),
+            ast::ExpressionKind::Index { lhs, index } => self.trans_index(*lhs, *index, builder),
             x => unimplemented!("{:?}", x),
         }
     }
@@ -274,21 +275,46 @@ impl<'a> SsaGen<'a> {
         builder.call(&self.module, sig.id.unwrap(), args)
     }
 
-    fn trans_lvalue(&mut self, expr: ast::Expression) -> ssa::Value {
+    fn trans_index(
+        &mut self,
+        lhs: ast::Expression,
+        index: ast::Expression,
+        builder: &mut ssa::FunctionBuilder,
+    ) -> ssa::Value {
+        let lhs = self.trans_lvalue(lhs, builder);
+        let index = self.trans_expr(index, builder);
+        let indexed_lhs = builder.gep(&self.module, lhs, vec![ssa::Value::new_i32(0), index]);
+        builder.load(&self.module, indexed_lhs)
+    }
+
+    fn trans_lvalue(
+        &mut self,
+        expr: ast::Expression,
+        builder: &mut ssa::FunctionBuilder,
+    ) -> ssa::Value {
         match expr.kind {
             ast::ExpressionKind::Ident { name } => {
                 let sig = self.symtab.find_variable(self.cur_scope(), &name).unwrap();
                 sig.val.unwrap()
             }
+            ast::ExpressionKind::Index { lhs, index } => {
+                let lhs = self.trans_lvalue(*lhs, builder);
+                let index = self.trans_expr(*index, builder);
+                builder.gep(&self.module, lhs, vec![ssa::Value::new_i32(0), index])
+            }
             x => unimplemented!("{:?}", x),
         }
     }
 
-    fn trans_type(&self, typ: Type) -> ssa::Type {
+    fn trans_type(typ: Type, types: &mut ssa::Types) -> ssa::Type {
         match typ {
             Type::Void => ssa::Type::Void,
             Type::Int => ssa::Type::I32,
             Type::Bool => ssa::Type::I1,
+            Type::Array { elm_type, len } => {
+                let elm_type = Self::trans_type(*elm_type, types);
+                types.array_of(elm_type, len as usize)
+            }
 
             x => unimplemented!("{:?}", x),
         }
