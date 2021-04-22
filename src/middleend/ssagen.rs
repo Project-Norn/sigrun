@@ -1,7 +1,7 @@
 use siderow::ssa;
 
 use crate::common::{
-    operator::BinaryOperator,
+    operator::{BinaryOperator, UnaryOperator},
     symtab::{NodeId, SymbolTable},
     types::Type,
 };
@@ -38,20 +38,20 @@ impl<'a> SsaGen<'a> {
     }
 
     fn trans_function(&mut self, func: ast::Function) {
-        let ret_typ = Self::trans_type(func.ret_typ, &mut self.module.types);
+        let ret_typ = Self::trans_type(func.ret_typ, &mut self.module.types.borrow_mut());
         let param_typ = func
             .params
             .iter()
-            .map(|param| Self::trans_type(param.typ.clone(), &mut self.module.types))
+            .map(|param| Self::trans_type(param.typ.clone(), &mut self.module.types.borrow_mut()))
             .collect();
 
-        let function = ssa::Function::new(&func.name, ret_typ, param_typ);
+        let function = ssa::Function::new(&self.module, &func.name, ret_typ, param_typ);
         let func_name = func.name.clone();
         let func_id = self.module.add_function(function);
         self.symtab.set_id(self.cur_scope(), func_name, func_id);
 
         // TODO
-        let dummy_function = ssa::Function::new("", ssa::Type::Void, vec![]);
+        let dummy_function = ssa::Function::new(&self.module, "", ssa::Type::Void, vec![]);
         let mut ssa_function =
             std::mem::replace(self.module.function_mut(func_id).unwrap(), dummy_function);
         let mut builder = ssa::FunctionBuilder::new(&mut ssa_function);
@@ -113,7 +113,7 @@ impl<'a> SsaGen<'a> {
         value: Option<ast::Expression>,
         builder: &mut ssa::FunctionBuilder,
     ) {
-        let typ = Self::trans_type(typ, &mut builder.function_mut().types);
+        let typ = Self::trans_type(typ, &mut builder.function_mut().types.borrow_mut());
         let dst = builder.alloc(typ);
 
         if let Some(value) = value {
@@ -216,6 +216,7 @@ impl<'a> SsaGen<'a> {
             ast::ExpressionKind::Bool { value } => ssa::Value::new_i1(value),
 
             ast::ExpressionKind::Ident { name } => self.trans_ident(name, builder),
+            ast::ExpressionKind::UnaryOp { op, expr } => self.trans_unop(op, *expr, builder),
             ast::ExpressionKind::BinaryOp { op, lhs, rhs } => {
                 self.trans_binop(op, *lhs, *rhs, builder)
             }
@@ -227,7 +228,28 @@ impl<'a> SsaGen<'a> {
 
     fn trans_ident(&mut self, name: String, builder: &mut ssa::FunctionBuilder) -> ssa::Value {
         let sig = self.symtab.find_variable(self.cur_scope(), &name).unwrap();
-        builder.load(&self.module, sig.val.unwrap())
+        match sig.typ {
+            Type::Array { .. } => sig.val.unwrap(),
+            _ => builder.load(sig.val.unwrap()),
+        }
+    }
+
+    fn trans_unop(
+        &mut self,
+        op: UnaryOperator,
+        expr: ast::Expression,
+        builder: &mut ssa::FunctionBuilder,
+    ) -> ssa::Value {
+        use UnaryOperator::*;
+
+        match op {
+            Addr => self.trans_lvalue(expr, builder),
+            Load => {
+                let expr = self.trans_expr(expr, builder);
+                builder.load(expr)
+            }
+            x => unimplemented!("{:?}", x),
+        }
     }
 
     fn trans_binop(
@@ -281,10 +303,16 @@ impl<'a> SsaGen<'a> {
         index: ast::Expression,
         builder: &mut ssa::FunctionBuilder,
     ) -> ssa::Value {
-        let lhs = self.trans_lvalue(lhs, builder);
+        let lhs = self.trans_expr(lhs, builder);
         let index = self.trans_expr(index, builder);
-        let indexed_lhs = builder.gep(&self.module, lhs, vec![ssa::Value::new_i32(0), index]);
-        builder.load(&self.module, indexed_lhs)
+
+        let indexed_lhs = match lhs.typ() {
+            ssa::Type::Array(_, _) => builder.gep(lhs, vec![ssa::Value::new_i32(0), index]),
+            ssa::Type::Pointer(_) => builder.gep(lhs, vec![index]),
+            x => unimplemented!("{:?}", x),
+        };
+
+        builder.load(indexed_lhs)
     }
 
     fn trans_lvalue(
@@ -298,9 +326,21 @@ impl<'a> SsaGen<'a> {
                 sig.val.unwrap()
             }
             ast::ExpressionKind::Index { lhs, index } => {
-                let lhs = self.trans_lvalue(*lhs, builder);
+                let lhs = self.trans_expr(*lhs, builder);
                 let index = self.trans_expr(*index, builder);
-                builder.gep(&self.module, lhs, vec![ssa::Value::new_i32(0), index])
+
+                match lhs.typ() {
+                    ssa::Type::Array(_, _) => builder.gep(lhs, vec![ssa::Value::new_i32(0), index]),
+                    ssa::Type::Pointer(_) => builder.gep(lhs, vec![index]),
+                    x => unimplemented!("{:?}", x),
+                }
+            }
+            ast::ExpressionKind::UnaryOp {
+                op: UnaryOperator::Load,
+                expr,
+            } => {
+                let expr = self.trans_lvalue(*expr, builder);
+                builder.load(expr)
             }
             x => unimplemented!("{:?}", x),
         }
@@ -311,6 +351,10 @@ impl<'a> SsaGen<'a> {
             Type::Void => ssa::Type::Void,
             Type::Int => ssa::Type::I32,
             Type::Bool => ssa::Type::I1,
+            Type::Pointer { pointer_to } => {
+                let elm_type = Self::trans_type(*pointer_to, types);
+                types.ptr_to(elm_type)
+            }
             Type::Array { elm_type, len } => {
                 let elm_type = Self::trans_type(*elm_type, types);
                 types.array_of(elm_type, len as usize)
