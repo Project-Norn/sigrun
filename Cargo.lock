@@ -33,7 +33,7 @@ dependencies = [
 [[package]]
 name = "siderow"
 version = "0.1.0"
-source = "git+https://github.com/project-ela/siderow#7bfa3ae46a0053bbbe6690410619d0744478f04c"
+source = "git+https://github.com/project-ela/siderow#a234711089f3915328b838f466de20b444c546b9"
 dependencies = [
  "id-arena",
 ]
