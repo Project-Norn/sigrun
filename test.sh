@@ -9,6 +9,7 @@ try() {
     echo "compiling failed"
     exit 1
   fi
+  cargo run -- --dump-ir test.vd tmp.s > tmp.ssa
   gcc tmp.s -o tmp
   ./tmp
   actual=$?
