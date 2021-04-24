@@ -29,12 +29,26 @@ impl<'a> SsaGen<'a> {
 
     fn translate(mut self, module: ast::Module) -> ssa::Module {
         self.push(module.id);
+        for global in module.global_vars {
+            self.trans_global(global);
+        }
+
         for function in module.functions {
             self.trans_function(function);
         }
         self.pop();
 
         self.module
+    }
+
+    fn trans_global(&mut self, ast_global: ast::GlobalVar) {
+        // TODO
+        let global_name = ast_global.name;
+        let ssa_global = ssa::Global::new(global_name.clone(), ssa::Constant::I32(0));
+        let global_id = self.module.add_global(ssa_global);
+
+        let dst = ssa::Value::new_global(&mut self.module, global_id);
+        self.symtab.set_local(self.cur_scope(), global_name, dst);
     }
 
     fn trans_function(&mut self, func: ast::Function) {
