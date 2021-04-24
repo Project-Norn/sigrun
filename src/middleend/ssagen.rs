@@ -50,6 +50,10 @@ impl<'a> SsaGen<'a> {
         let func_id = self.module.add_function(function);
         self.symtab.set_id(self.cur_scope(), func_name, func_id);
 
+        if func.body.is_none() {
+            return;
+        }
+
         // TODO
         let dummy_function = ssa::Function::new(&self.module, "", ssa::Type::Void, vec![]);
         let mut ssa_function =
