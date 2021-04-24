@@ -221,7 +221,7 @@ impl<'a> SsaGen<'a> {
                 self.trans_binop(op, *lhs, *rhs, builder)
             }
             ast::ExpressionKind::Call { name, args } => self.trans_call(name, args, builder),
-            ast::ExpressionKind::Index { lhs, index } => self.trans_index(*lhs, *index, builder),
+            ast::ExpressionKind::Index { .. } => self.trans_index(expr, builder),
             x => unimplemented!("{:?}", x),
         }
     }
@@ -299,20 +299,11 @@ impl<'a> SsaGen<'a> {
 
     fn trans_index(
         &mut self,
-        lhs: ast::Expression,
-        index: ast::Expression,
+        expr: ast::Expression,
         builder: &mut ssa::FunctionBuilder,
     ) -> ssa::Value {
-        let lhs = self.trans_expr(lhs, builder);
-        let index = self.trans_expr(index, builder);
-
-        let indexed_lhs = match lhs.typ() {
-            ssa::Type::Array(_, _) => builder.gep(lhs, vec![ssa::Value::new_i32(0), index]),
-            ssa::Type::Pointer(_) => builder.gep(lhs, vec![index]),
-            x => unimplemented!("{:?}", x),
-        };
-
-        builder.load(indexed_lhs)
+        let indexed_expr = self.trans_lvalue(expr, builder);
+        builder.load(indexed_expr)
     }
 
     fn trans_lvalue(
@@ -329,10 +320,10 @@ impl<'a> SsaGen<'a> {
                 let lhs = self.trans_expr(*lhs, builder);
                 let index = self.trans_expr(*index, builder);
 
-                match lhs.typ() {
+                let elm_typ = builder.function().types.borrow().elm_typ(lhs.typ());
+                match elm_typ {
                     ssa::Type::Array(_, _) => builder.gep(lhs, vec![ssa::Value::new_i32(0), index]),
-                    ssa::Type::Pointer(_) => builder.gep(lhs, vec![index]),
-                    x => unimplemented!("{:?}", x),
+                    _ => builder.gep(lhs, vec![index]),
                 }
             }
             ast::ExpressionKind::UnaryOp {
