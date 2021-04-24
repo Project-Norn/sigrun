@@ -86,7 +86,11 @@ impl<'a> SsaGen<'a> {
             ast::StatementKind::Block { stmts } => {
                 self.push(stmt.id);
                 for stmt in stmts {
+                    let stop_translation = matches!(stmt.kind, ast::StatementKind::Return {..});
                     self.trans_stmt(stmt, builder);
+                    if stop_translation {
+                        break;
+                    }
                 }
                 self.pop();
             }
