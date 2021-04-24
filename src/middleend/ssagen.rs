@@ -212,8 +212,9 @@ impl<'a> SsaGen<'a> {
         builder: &mut ssa::FunctionBuilder,
     ) -> ssa::Value {
         match expr.kind {
-            ast::ExpressionKind::Integer { value } => ssa::Value::new_i32(value),
             ast::ExpressionKind::Bool { value } => ssa::Value::new_i1(value),
+            ast::ExpressionKind::Char { value } => ssa::Value::new_i8(value as i8),
+            ast::ExpressionKind::Integer { value } => ssa::Value::new_i32(value),
 
             ast::ExpressionKind::Ident { name } => self.trans_ident(name, builder),
             ast::ExpressionKind::UnaryOp { op, expr } => self.trans_unop(op, *expr, builder),

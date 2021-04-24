@@ -281,5 +281,11 @@ func main(): int {
     asserti(arr[1], 1)
   }
 
+  asserti('a', 97)
+  asserti('A', 65)
+  asserti('A' + 3, 68)
+  assertb('A' == 'A', true)
+  assertb('A' != 'A', false)
+
   return 0
 }
