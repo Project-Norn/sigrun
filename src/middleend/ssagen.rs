@@ -340,8 +340,9 @@ impl<'a> SsaGen<'a> {
     fn trans_type(typ: Type, types: &mut ssa::Types) -> ssa::Type {
         match typ {
             Type::Void => ssa::Type::Void,
-            Type::Int => ssa::Type::I32,
             Type::Bool => ssa::Type::I1,
+            Type::Byte => ssa::Type::I8,
+            Type::Int => ssa::Type::I32,
             Type::Pointer { pointer_to } => {
                 let elm_type = Self::trans_type(*pointer_to, types);
                 types.ptr_to(elm_type)
@@ -350,8 +351,6 @@ impl<'a> SsaGen<'a> {
                 let elm_type = Self::trans_type(*elm_type, types);
                 types.array_of(elm_type, len as usize)
             }
-
-            x => unimplemented!("{:?}", x),
         }
     }
 

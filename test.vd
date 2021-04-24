@@ -273,5 +273,13 @@ func main(): int {
     assertb(arr[1], false)
   }
 
+  {
+    var arr: byte[3]
+    arr[0] = 0
+    arr[1] = 1
+    arr[2] = 2
+    asserti(arr[1], 1)
+  }
+
   return 0
 }
