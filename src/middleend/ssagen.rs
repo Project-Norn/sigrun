@@ -271,7 +271,10 @@ impl<'a> SsaGen<'a> {
                 let expr = self.trans_expr(expr, builder);
                 builder.load(expr)
             }
-            x => unimplemented!("{:?}", x),
+            Not => {
+                let expr = self.trans_expr(expr, builder);
+                builder.xor(expr, ssa::Value::new_i1(true))
+            }
         }
     }
 

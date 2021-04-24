@@ -104,6 +104,8 @@ func main(): int {
   assertb(2 > 1, true)
   assertb(0 >= 1, false)
   assertb(1 >= 1, true)
+  assertb(!true, false)
+  assertb(!false, true)
 
   {
     var i: int
