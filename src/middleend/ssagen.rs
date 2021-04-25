@@ -138,10 +138,11 @@ impl<'a> SsaGen<'a> {
         let typ = Self::trans_type(typ, &mut builder.function_mut().types.borrow_mut());
         let dst = builder.alloc(typ);
 
-        if let Some(value) = value {
-            let src = self.trans_expr(value, builder);
-            builder.store(dst, src);
-        }
+        let src = match value {
+            Some(value) => self.trans_expr(value, builder),
+            None => ssa::Value::new_zero(),
+        };
+        builder.store(dst, src);
 
         self.symtab.set_local(self.cur_scope(), name, dst);
     }
